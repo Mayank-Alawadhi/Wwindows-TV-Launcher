@@ -16,6 +16,7 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
+    "icon": ["icons/icon.ico"],
     "resources": { "../sites.json": "sites.json", "../icons/*": "icons/" },
     "windows": { "nsis": { "displayLanguageSelector": false, "installMode": "currentUser" } }
   }
