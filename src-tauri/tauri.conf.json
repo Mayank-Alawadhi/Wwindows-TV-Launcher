@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Windows TV Launcher",
+  "version": "1.0.0",
+  "identifier": "app.windowstv.launcher",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "resources": { "../sites.json": "sites.json", "../icons/*": "icons/" },
+    "windows": { "nsis": { "displayLanguageSelector": false, "installMode": "currentUser" } }
+  }
+}

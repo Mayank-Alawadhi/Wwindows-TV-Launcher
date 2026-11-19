@@ -1,0 +1,9 @@
+node_modules/
+dist/
+src-tauri/target/
+outputs/*
+!outputs/.gitkeep
+work/
+*.log
+.DS_Store
+Thumbs.db

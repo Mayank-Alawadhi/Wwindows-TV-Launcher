@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090d" />
+    <title>Windows TV Launcher</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main id="home" aria-label="Streaming services">
+      <div class="topline"><span class="eyebrow">YOUR SCREEN</span><span id="clock"></span></div>
+      <section id="tiles" class="tiles" aria-label="Services"></section>
+      <footer><span>← ↑ ↓ → &nbsp; MOVE</span><span>ENTER &nbsp; OPEN</span><span>BACKSPACE &nbsp; HOME</span></footer>
+    </main>
+    <div id="hint" class="hint" aria-live="polite">BACKSPACE &nbsp; HOME</div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

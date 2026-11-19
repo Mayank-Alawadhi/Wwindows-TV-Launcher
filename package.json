@@ -1,0 +1,18 @@
+{
+  "name": "windows-tv-launcher",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "vite": "^6.4.1"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.0"
+  }
+}
