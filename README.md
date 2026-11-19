@@ -24,7 +24,7 @@ npm run tauri build
 
 The NSIS installer is written under `src-tauri/target/release/bundle/nsis/`.
 
-For a downloadable Windows x64 installer, see [GitHub Releases](https://github.com/Mayank-Alawadhi/Wwindows-TV-Launcher/releases). Pushing a `v*` version tag builds and attaches an x64 NSIS installer automatically; the initial release uses `v1.0.0`.
+For a downloadable Windows x64 installer, see [GitHub Releases](https://github.com/Mayank-Alawadhi/Wwindows-TV-Launcher/releases). Pushing to `main` builds and attaches the Windows x64 NSIS installer to the `v1.0.0` release. The workflow can also be run manually from the GitHub Actions page to retry a failed build.
 
 ## Customize services
 

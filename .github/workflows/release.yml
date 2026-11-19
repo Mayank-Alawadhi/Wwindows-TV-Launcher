@@ -2,8 +2,9 @@ name: Build and publish Windows installer
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -34,8 +35,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: Windows TV Launcher ${{ github.ref_name }}
+          tagName: v1.0.0
+          releaseName: Windows TV Launcher 1.0.0
           releaseBody: Windows x64 NSIS installer for Windows 10 and 11.
           releaseDraft: false
           prerelease: false
