@@ -38,7 +38,7 @@ function startBoot() {
     return;
   }
   bootState = 'running';
-  const duration = settings.shortBootAnimation ? 1500 : 3500;
+  const duration = settings.shortBootAnimation ? 1500 : 8000;
   bootScreen.classList.add('playing');
   if (settings.shortBootAnimation) bootScreen.classList.add('short');
   if (settings.bootSound) {
