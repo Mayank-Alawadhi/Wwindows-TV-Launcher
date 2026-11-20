@@ -4,8 +4,10 @@ const settingsView = document.querySelector('#settings');
 const clock = document.querySelector('#clock');
 const bootScreen = document.querySelector('#boot-screen');
 const { invoke } = window.__TAURI__.core;
+const defaultShortcuts = { up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight',select:'Enter',home:'Escape',fullscreen:'F11',settings:'S',remote:'Q',power:'P' };
+const shortcutNames = { up:'Move up',down:'Move down',left:'Move left',right:'Move right',select:'Select / open',home:'Home / back',fullscreen:'Toggle fullscreen',settings:'Open settings',remote:'Open phone remote',power:'Power menu' };
 let sites = [];
-let settings = { heroMode: 'most-used', remotePort: 47831, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false };
+let settings = { heroMode: 'most-used', remotePort: 47831, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false, shortcuts:{...defaultShortcuts} };
 let focusId = '';
 let editingIndex = -1;
 let cursorTimer;
@@ -13,11 +15,31 @@ let bootState = 'loading';
 let bootSkipRequested = false;
 let bootRevealTimer;
 let bootFinishTimer;
+let recordingShortcut = null;
 const tileById = new Map();
 const colorCache = new Map();
 const $ = (selector) => document.querySelector(selector);
 
-function clockTick() { clock.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date()); }
+function clockTick() {
+  const now = new Date(); clock.textContent = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(now);
+  const hour = now.getHours(); $('#greeting').textContent = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+}
+function displayKey(key) { return ({ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→',Enter:'Enter',Escape:'Esc',Backspace:'Backspace',Space:'Space'})[key] || key; }
+function refreshShortcutHints() {
+  $('#hint-move').textContent=`${displayKey(settings.shortcuts.up)} ${displayKey(settings.shortcuts.down)} ${displayKey(settings.shortcuts.left)} ${displayKey(settings.shortcuts.right)}  MOVE`;
+  $('#hint-select').textContent=`${displayKey(settings.shortcuts.select)}  OPEN`;
+  $('#hint-home').textContent=`${displayKey(settings.shortcuts.home)}  HOME`;
+  $('#hint-settings').textContent=`${displayKey(settings.shortcuts.settings)}  SETTINGS`;
+  $('#hint-remote').textContent=`${displayKey(settings.shortcuts.remote)}  REMOTE`;
+  $('#hint-fullscreen').textContent=`${displayKey(settings.shortcuts.fullscreen)}  FULLSCREEN`;
+  $('#hint-power').textContent=`${displayKey(settings.shortcuts.power)}  POWER`;
+}
+function normalizeKey(event) {
+  if (['Control','Alt','Shift','Meta'].includes(event.key)) return null;
+  const key = event.key === ' ' ? 'Space' : event.key.length === 1 ? event.key.toUpperCase() : event.key;
+  const parts=[]; if(event.ctrlKey)parts.push('Ctrl');if(event.altKey)parts.push('Alt');if(event.shiftKey)parts.push('Shift');if(event.metaKey)parts.push('Meta');parts.push(key);return parts.join('+');
+}
+function shortcutAction(event) { const key=normalizeKey(event);return key?Object.keys(settings.shortcuts).find(action=>settings.shortcuts[action]===key):null; }
 function revealHome() {
   document.body.classList.add('home-visible', 'tiles-arriving');
   bootScreen.classList.add('leaving');
@@ -34,7 +56,7 @@ function startBoot() {
   const cameFromSite = new URLSearchParams(location.search).has('from');
   if (!settings.showBootAnimation || cameFromSite || shortcut || bootSkipRequested) {
     bootState = 'finished'; bootScreen.remove(); document.body.classList.add('home-visible');
-    if (shortcut === 's') openSettings(); else if (shortcut === 'q') showRemote();
+    if (shortcut === 's'||shortcut==='settings') openSettings(); else if (shortcut === 'q'||shortcut==='remote') showRemote(); else if(shortcut==='power')showPowerDialog();
     return;
   }
   bootState = 'running';
@@ -98,7 +120,7 @@ function render() {
   const gearWrap=document.createElement('div');gearWrap.className='tile-wrap';gearWrap.append(makeTile(gear,'settings'));const gearLabel=document.createElement('span');gearLabel.className='tile-label';gearLabel.textContent='Settings';gearWrap.append(gearLabel);all.push(gearWrap);
   allRoot.replaceChildren(...all); tileById.clear();
   [...heroRoot.querySelectorAll('.tile'), ...allRoot.querySelectorAll('.tile')].forEach((node) => tileById.set(node.dataset.id,node));
-  const target = tileById.get(focusId) || tileById.values().next().value; focusId = target?.dataset.id || ''; target?.classList.add('selected'); target?.focus({ preventScroll: true }); focusedColor();
+  const target = focusId==='power'?$('#power-button'):(tileById.get(focusId) || tileById.values().next().value); focusId = target?.dataset.id || (target?.id==='power-button'?'power':''); if(target?.classList.contains('tile'))target.classList.add('selected'); target?.focus({ preventScroll: true }); focusedColor();
 }
 function launch(site) {
   if (!site) return;
@@ -106,18 +128,33 @@ function launch(site) {
   location.href = site.url;
 }
 function moveFocus(key) {
-  const buttons = [...document.querySelectorAll('#hero .tile,#all-sites .tile')];
-  const current = tileById.get(focusId); if (!buttons.length) return;
+  const buttons = [...document.querySelectorAll('#hero .tile,#all-sites .tile'),$('#power-button')];
+  const current = focusId==='power'?$('#power-button'):tileById.get(focusId); if (!buttons.length) return;
   if (!current || !buttons.includes(current)) { buttons[0].focus(); return; }
   const dir = ({ ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1] })[key];
   const r = current.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
   const candidates = buttons.filter((b)=>b!==current).map((b)=>{const q=b.getBoundingClientRect();const x=q.left+q.width/2-cx,y=q.top+q.height/2-cy;const primary=x*dir[0]+y*dir[1];const cross=Math.abs(x*dir[1]-y*dir[0]);return {b,primary,cross};}).filter((x)=>x.primary>0);
-  candidates.sort((a,b)=>a.cross-b.cross || a.primary-b.primary);
-  (candidates[0]?.b || buttons[0]).focus();
+  candidates.sort((a,b)=>(a.primary+a.cross*2)-(b.primary+b.cross*2));
+  (candidates[0]?.b || current).focus();
 }
 function goHome() { if (settingsView.hidden === false) { closeSettings(); return; } location.href = 'http://tauri.localhost/index.html'; }
 function openSettings() { settingsView.hidden=false; populateSettings(); setTimeout(()=>$('#close-settings').focus(),20); }
 function closeSettings() { settingsView.hidden=true; tileById.get('settings')?.focus() || tileById.get(focusId)?.focus(); }
+function renderShortcutSettings() {
+  const root=$('#shortcut-list');root.replaceChildren(...Object.entries(shortcutNames).map(([action,name])=>{
+    const row=document.createElement('div');row.className='shortcut-row';const label=document.createElement('span');label.className='shortcut-name';label.textContent=name;
+    const button=document.createElement('button');button.type='button';button.className='quiet shortcut-key';button.dataset.shortcut=action;button.textContent=recordingShortcut===action?'Press a key…':(settings.shortcuts[action]||defaultShortcuts[action]).split('+').map(displayKey).join(' + ');
+    if(recordingShortcut===action)button.classList.add('recording');
+    button.addEventListener('click',()=>{recordingShortcut=recordingShortcut===action?null:action;renderShortcutSettings();document.querySelector(`[data-shortcut="${action}"]`)?.focus();});row.append(label,button);return row;
+  }));
+}
+function moveSettingsFocus(action) {
+  const items=[...settingsView.querySelectorAll('button,select,input')].filter(el=>!el.disabled&&el.getClientRects().length);
+  const current=document.activeElement;if(!items.length||!items.includes(current))return;
+  const direction=({up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]})[action];const r=current.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const next=items.filter(item=>item!==current).map(item=>{const b=item.getBoundingClientRect(),x=b.left+b.width/2-cx,y=b.top+b.height/2-cy,primary=x*direction[0]+y*direction[1],cross=Math.abs(x*direction[1]-y*direction[0]);return{item,primary,cross,score:primary+cross*2};}).filter(c=>c.primary>0).sort((a,b)=>a.score-b.score)[0];
+  next?.item.focus();
+}
 function populateSettings() {
   $('#hero-mode').value=settings.heroMode; $('#remote-port').value=settings.remotePort; $('#fullscreen-setting').checked=!!settings.startFullscreen;
   $('#boot-animation-setting').checked=!!settings.showBootAnimation; $('#short-boot-setting').checked=!!settings.shortBootAnimation; $('#boot-sound-setting').checked=!!settings.bootSound;
@@ -130,6 +167,7 @@ function populateSettings() {
     button('↑',()=>moveSite(index,-1));button('↓',()=>moveSite(index,1));button('Delete',()=>{sites.splice(index,1);save();render();populateSettings();});
     row.append(img,info,actions);return row;
   }));
+  renderShortcutSettings();
   if(!settingsView.hidden)$('#add-site').focus();
 }
 function moveSite(index,delta) { const next=index+delta;if(next<0||next>=sites.length)return;[sites[index],sites[next]]=[sites[next],sites[index]];save();render();populateSettings(); }
@@ -148,25 +186,51 @@ async function showRemote() {
   try { const info=await invoke('get_remote_info',{port:settings.remotePort});$('#remote-qr').innerHTML=info.qrSvg;$('#remote-address').textContent=info.url; }
   catch(error){$('#remote-address').textContent=String(error);}
 }
+function showPowerDialog() { $('#power-dialog').showModal();setTimeout(()=>$('#exit-app').focus(),10); }
+async function toggleFullscreen() {
+  try { const appWindow=window.__TAURI__.window.getCurrentWindow();await appWindow.setFullscreen(!(await appWindow.isFullscreen())); }
+  catch(error) { toast(`Could not toggle fullscreen: ${error}`); }
+}
+function acceptShortcut(event) {
+  if(!recordingShortcut)return false;
+  event.preventDefault();event.stopImmediatePropagation();
+  if(event.key==='Escape'&&recordingShortcut!=='home'){recordingShortcut=null;renderShortcutSettings();return true;}
+  const key=normalizeKey(event);if(!key)return true;
+  const conflict=Object.entries(settings.shortcuts).find(([action,value])=>action!==recordingShortcut&&value===key);
+  if(conflict){toast(`${key} is already assigned to ${shortcutNames[conflict[0]]}.`);return true;}
+  const action=recordingShortcut;settings.shortcuts[action]=key;recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();document.querySelector(`[data-shortcut="${action}"]`)?.focus();return true;
+}
 function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||47831));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;save();if(oldPort!==settings.remotePort)invoke('configure_remote',{port:settings.remotePort}).catch(toast);render();if(!settingsView.hidden)$('#hero-mode').focus(); }
 
 document.addEventListener('keydown',(event)=>{
-  const editorOpen=$('#editor').open, remoteOpen=$('#remote-dialog').open;
-  if(editorOpen||remoteOpen){if(event.key==='Escape'){event.preventDefault();if(editorOpen)$('#editor').close();if(remoteOpen)$('#remote-dialog').close();}return;}
-  if(settingsView.hidden===false){
-    if(event.key==='Escape'||event.key==='Backspace'){event.preventDefault();closeSettings();}
-    else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.key)){const items=[...settingsView.querySelectorAll('button,select,input')].filter(el=>!el.disabled);const i=items.indexOf(document.activeElement);items[(i+(event.key==='ArrowLeft'||event.key==='ArrowUp'?-1:1)+items.length)%items.length]?.focus();event.preventDefault();}
-    else if(event.key==='Enter'&&document.activeElement?.tagName==='BUTTON'){document.activeElement.click();event.preventDefault();}
-    return;
+  if(acceptShortcut(event))return;
+  const action=shortcutAction(event);
+  const dialogs=['#editor','#remote-dialog','#power-dialog','#restart-confirm-dialog'].map($).filter(dialog=>dialog.open);
+  if(dialogs.length){if(event.key==='Escape'||action==='home'){event.preventDefault();dialogs.at(-1).close();}else if(action==='select'&&document.activeElement?.tagName==='BUTTON'){event.preventDefault();document.activeElement.click();}return;}
+  if(document.activeElement?.matches('input:not([type=checkbox]),textarea,[contenteditable=true]'))return;
+  if(settingsView.hidden===false&&event.key==='Backspace'){event.preventDefault();closeSettings();return;}
+  if(!action)return;
+  const directions={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'};
+  if(directions[action]){event.preventDefault();settingsView.hidden?moveFocus(directions[action]):moveSettingsFocus(action);return;}
+  if(action==='select'){
+    event.preventDefault();
+    if(!settingsView.hidden){const active=document.activeElement;if(active?.matches('button,select,input[type=checkbox]'))active.click();return;}
+    if(focusId==='settings')openSettings();else{const id=focusId.split(':')[1];const index=Number(id);launch(sites.find((site,i)=>String(site.id||i)===id)||sites[index]);}return;
   }
-  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();moveFocus(event.key);}
-  else if(event.key==='Enter'){event.preventDefault();if(focusId==='settings')openSettings();else{const index=Number((focusId.split(':')[1]));launch(sites.find((s,i)=>String(s.id||i)===String(focusId.split(':')[1]))||sites[index]);}}
-  else if(event.key==='s'||event.key==='S'){event.preventDefault();openSettings();}
-  else if(event.key==='q'||event.key==='Q'){event.preventDefault();showRemote();}
-  else if(event.key==='Escape'||event.key==='Backspace'){event.preventDefault();}
+  event.preventDefault();
+  if(action==='home'){if(!settingsView.hidden)closeSettings();return;}
+  if(action==='fullscreen'){toggleFullscreen();return;}
+  if(action==='settings'){openSettings();return;}
+  if(action==='remote'){showRemote();return;}
+  if(action==='power'||focusId==='power')showPowerDialog();
 });
 
-$('#close-settings').addEventListener('click',closeSettings);$('#add-site').addEventListener('click',()=>editSite());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor-2').addEventListener('click',()=>$('#editor').close());$('#show-remote').addEventListener('click',showRemote);
+$('#power-button').addEventListener('focus',()=>{document.querySelectorAll('.tile.selected').forEach((tile)=>tile.classList.remove('selected'));focusId='power';});
+$('#close-settings').addEventListener('click',closeSettings);$('#add-site').addEventListener('click',()=>editSite());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor-2').addEventListener('click',()=>$('#editor').close());$('#show-remote').addEventListener('click',showRemote);$('#power-button').addEventListener('click',showPowerDialog);
+$('#reset-shortcuts').addEventListener('click',()=>{settings.shortcuts={...defaultShortcuts};recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();toast('Default shortcuts restored');});
+$('#exit-app').addEventListener('click',()=>invoke('exit_launcher'));
+$('#restart-pc').addEventListener('click',()=>{$('#power-dialog').close();$('#restart-confirm-dialog').showModal();setTimeout(()=>$('#confirm-restart').focus(),10);});
+$('#confirm-restart').addEventListener('click',async()=>{try{await invoke('restart_windows');$('#restart-confirm-dialog').close();}catch(error){$('#restart-confirm-dialog').close();toast(`Could not restart Windows: ${error}`);}});
 $('#hero-mode').addEventListener('change',updateSettingInputs);$('#remote-port').addEventListener('change',updateSettingInputs);$('#fullscreen-setting').addEventListener('change',updateSettingInputs);
 $('#boot-animation-setting').addEventListener('change',updateSettingInputs);$('#short-boot-setting').addEventListener('change',updateSettingInputs);$('#boot-sound-setting').addEventListener('change',updateSettingInputs);
 $('#reset-stats').addEventListener('click',()=>{for(const site of sites){site.launchCount=0;site.lastOpened=null;}save();render();populateSettings();toast('Usage statistics reset');});
@@ -179,7 +243,7 @@ $('#site-form').addEventListener('submit',async(e)=>{e.preventDefault();try{cons
 
 function resetCursor(){document.body.classList.remove('cursor-hidden');clearTimeout(cursorTimer);cursorTimer=setTimeout(()=>document.body.classList.add('cursor-hidden'),2500);}document.addEventListener('mousemove',resetCursor);resetCursor();
 clockTick();setInterval(clockTick,30000);
-invoke('load_launcher_data').then(data=>{sites=(data.sites||[]).map((s,i)=>({...s,id:s.id||`site-${i}`}));settings={...settings,...data.settings};render();startBoot();}).catch(err=>{toast(`Could not load launcher data: ${err}`);console.error(err);startBoot();});
+invoke('load_launcher_data').then(data=>{sites=(data.sites||[]).map((s,i)=>({...s,id:s.id||`site-${i}`}));settings={...settings,...data.settings,shortcuts:{...defaultShortcuts,...data.settings?.shortcuts}};refreshShortcutHints();render();startBoot();}).catch(err=>{toast(`Could not load launcher data: ${err}`);console.error(err);refreshShortcutHints();startBoot();});
 
 // In site pages, the document-start hook intercepts Backspace before the site's handlers.
 if(location.hostname!=='tauri.localhost'&&location.protocol!=='tauri:'){document.body.style.display='none';}

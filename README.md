@@ -30,6 +30,8 @@ For a downloadable Windows x64 installer, see [GitHub Releases](https://github.c
 
 The home screen includes a Most used shelf, a six-column All sites grid, and keyboard navigation. Press **S** or choose **Settings** to add and edit sites, upload logos, pin sites, reorder them, or reset usage counts. The **Q** key shows the phone remote QR code; the phone and PC must be on the same local network. The remote server port can be changed in Settings. Use **F11** to toggle fullscreen.
 
+Settings also lets you remap the launcher keys for directional movement, select, home/back, fullscreen, settings, remote, and the power menu. The power menu can close the launcher or restart Windows; restarting requires a second confirmation. The home screen shows the current time above a smaller time-of-day greeting.
+
 On first run, default sites and icons are copied from the bundled `sites.json` and `icons` folder. At runtime, the persistent configuration and uploaded logos are stored in `%LOCALAPPDATA%\app.windowstv.launcher\` (`sites.json` and `logos`). Settings changes are saved there and survive app updates and reinstalls. You can edit that user-data `sites.json` manually while the app is closed. The bundled root `sites.json` is the template for new profiles. Single-instance behavior is enabled.
 
 ## Startup screen

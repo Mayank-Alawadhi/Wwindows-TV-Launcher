@@ -1,0 +1,21 @@
+.header{align-items:flex-start}
+#home>.header{height:auto;min-height:clamp(115px,13vh,164px);flex:0 0 auto}
+.welcome{display:flex;flex-direction:column;gap:5px}
+.header .hero-clock{font-size:clamp(58px,7vw,132px);font-weight:600;line-height:.94;letter-spacing:-.065em;color:#fff;padding:0}
+.greeting{margin:4px 0 0;color:#bfc3d1;font-size:clamp(14px,1.25vw,19px);font-weight:500;letter-spacing:.015em}
+.power-button{width:58px;height:58px;display:grid;place-items:center;border:1px solid #ffffff35;border-radius:50%;background:rgba(255,255,255,.09);color:#f7f7fb;box-shadow:0 8px 26px #0003;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+.power-button svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.power-button:hover,.power-button:focus-visible{transform:scale(1.09);background:#ffffff20;box-shadow:0 0 0 3px #ffffff28,0 0 25px color-mix(in srgb,var(--focus-color) 55%,transparent);outline:0}
+.power-button:active{transform:scale(.97)}
+.shortcut-settings{padding:2.6vh 0 3vh}
+.shortcut-list{display:grid;grid-template-columns:repeat(2,minmax(260px,1fr));gap:9px 22px}
+.shortcut-row{min-height:58px;display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid #ffffff1c;padding:8px 0}
+.shortcut-name{font-size:15px;font-weight:550;color:#e8e9f0}
+.shortcut-key{min-width:125px;text-align:center;font-weight:700;letter-spacing:.04em}
+.shortcut-key.recording{background:#b9afff;color:#161320;animation:record-key 1s ease-in-out infinite alternate}
+.shortcut-note{color:#b7bac9;font-size:13px;margin:8px 0 0}
+#power-dialog,#restart-confirm-dialog{width:min(600px,92vw)}
+#power-dialog form>footer,#restart-confirm-dialog form>footer{gap:12px;margin-top:22px}
+#power-dialog form>footer button,#restart-confirm-dialog form>footer button{min-height:48px;min-width:150px}
+@keyframes record-key{from{box-shadow:0 0 0 0 rgba(185,175,255,.15)}to{box-shadow:0 0 0 5px rgba(185,175,255,.34)}}
+@media(max-width:850px){.shortcut-list{grid-template-columns:1fr}.header .hero-clock{font-size:clamp(48px,8vw,82px)}.power-button{width:50px;height:50px}}

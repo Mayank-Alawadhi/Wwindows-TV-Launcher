@@ -17,6 +17,7 @@ export default defineConfig({
       cpSync(resolve('sites.json'), resolve(out, 'sites.json'));
       cpSync(resolve('icons'), resolve(out, 'icons'), { recursive: true });
       cpSync(resolve('assets'), resolve(out, 'assets'), { recursive: true });
+      cpSync(resolve('style-extra.css'), resolve(out, 'style-extra.css'));
     }
   }]
 });
