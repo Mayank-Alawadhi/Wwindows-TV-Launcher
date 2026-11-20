@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, io::{Read, Write}, net::{TcpListener, TcpStream, UdpSocket}, path::PathBuf, process::Command, sync::{atomic::{AtomicUsize, Ordering}, Mutex}, thread, time::{Duration, SystemTime, UNIX_EPOCH}};
-use tauri::{webview::{PageLoadEvent, WebviewWindowBuilder}, Manager, WebviewUrl};
+use tauri::{webview::{PageLoadEvent, WebviewWindowBuilder}, Emitter, Manager, WebviewUrl};
 
 static POPUP_ID: AtomicUsize = AtomicUsize::new(1);
 static REMOTE_GENERATION: AtomicUsize = AtomicUsize::new(0);
@@ -188,8 +188,8 @@ fn start_remote(app: tauri::AppHandle, requested: u16) -> Result<u16, String> {
                     let mut buf=[0u8;8192];let n=stream.read(&mut buf).unwrap_or(0);let req=String::from_utf8_lossy(&buf[..n]);let target=req.lines().next().unwrap_or("").split_whitespace().nth(1).unwrap_or("/");let route=target.split('?').next().unwrap_or("/");
                     match route {
                         "/"=>http(&mut stream,"200 OK","text/html; charset=utf-8",page()),
-                        "/manifest.webmanifest"=>http(&mut stream,"200 OK","application/manifest+json",r#"{"name":"Windows TV Remote","short_name":"TV Remote","start_url":"/","display":"standalone","background_color":"#10121a","theme_color":"#10121a","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]}"#),
-                        "/icon.svg"=>http(&mut stream,"200 OK","image/svg+xml",r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#161824"/><path d="M18 30h92v60H18z" fill="#8673ff"/><path d="m54 45 31 15-31 16z" fill="white"/><path d="M40 103h48" stroke="white" stroke-width="7" stroke-linecap="round"/></svg>"#),
+                        "/manifest.webmanifest"=>http(&mut stream,"200 OK","application/manifest+json",r##"{"name":"Windows TV Remote","short_name":"TV Remote","start_url":"/","display":"standalone","background_color":"#10121a","theme_color":"#10121a","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml"}]}"##),
+                        "/icon.svg"=>http(&mut stream,"200 OK","image/svg+xml",r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="#161824"/><path d="M18 30h92v60H18z" fill="#8673ff"/><path d="m54 45 31 15-31 16z" fill="white"/><path d="M40 103h48" stroke="white" stroke-width="7" stroke-linecap="round"/></svg>"##),
                         "/pair"=>{
                             let query=target.split_once('?').map(|x|x.1).unwrap_or("");let args:HashMap<_,_>=query.split('&').filter_map(|x|x.split_once('=')).collect();let remote=app.state::<RemoteControl>();let master=remote.token.lock().map(|x|x.clone()).unwrap_or_default();let code=remote.pairing_code.lock().map(|x|x.clone()).unwrap_or_default();let expiry=*remote.code_expires.lock().unwrap_or_else(|e|e.into_inner());let now=SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();let ip=stream.peer_addr().map(|x|x.ip().to_string()).unwrap_or_default();
                             let lock_until=remote.attempts.lock().ok().and_then(|a|a.get(&ip).map(|x|x.1)).unwrap_or(0);
