@@ -1,6 +1,6 @@
 # Windows TV Launcher
 
-A keyboard-first Windows streaming launcher built with Tauri v2, Rust, and plain HTML/CSS/JavaScript. It uses the installed Microsoft Edge WebView2 runtime and stores browser data persistently in the app's WebView2 data folder.
+A TV-style Windows streaming launcher built with Tauri v2, Rust, and plain HTML/CSS/JavaScript. It uses Microsoft Edge WebView2 for site browsing and keeps the launcher configuration in the current user's local app-data folder. WebView2 cookies and logins persist with the app.
 
 ## Install requirements
 
@@ -26,12 +26,12 @@ The NSIS installer is written under `src-tauri/target/release/bundle/nsis/`.
 
 For a downloadable Windows x64 installer, see [GitHub Releases](https://github.com/Mayank-Alawadhi/Wwindows-TV-Launcher/releases). Pushing to `main` builds and attaches the Windows x64 NSIS installer to the `v1.0.0` release. The workflow can also be run manually from the GitHub Actions page to retry a failed build.
 
-## Customize services
+## Sites, logos, and settings
 
-Edit `sites.json` and add an icon file under `icons/`. Each entry has `name`, `url`, and `icon` fields. On first run, the launcher copies these defaults beside the executable. In an installed copy, edit `sites.json` beside `Windows TV Launcher.exe` and add the icon under its `icons` folder, then restart the launcher. The home grid reads this file on startup.
+The home screen includes a Most used shelf, a six-column All sites grid, and keyboard navigation. Press **S** or choose **Settings** to add and edit sites, upload logos, pin sites, reorder them, or reset usage counts. The **Q** key shows the phone remote QR code; the phone and PC must be on the same local network. The remote server port can be changed in Settings. Use **F11** to toggle fullscreen.
 
-The launcher can return to the home grid with Backspace or Alt+Left and toggles fullscreen with F11. The Backspace handler ignores editable fields. Single-instance behavior is enabled.
+On first run, default sites and icons are copied from the bundled `sites.json` and `icons` folder. At runtime, the persistent configuration and uploaded logos are stored in `%LOCALAPPDATA%\app.windowstv.launcher\` (`sites.json` and `logos`). Settings changes are saved there and survive app updates and reinstalls. You can edit that user-data `sites.json` manually while the app is closed. The bundled root `sites.json` is the template for new profiles. Single-instance behavior is enabled.
 
 ## DRM note
 
-Windows WebView2 does not currently expose Widevine DRM. Services that require Widevine (including Netflix, Prime Video, or Disney+ playback in some regions/titles) may refuse protected playback inside this app. WebView2 can still load the sites, retain cookies, and support services that use compatible playback technology. The app cannot add Widevine support through a Tauri setting.
+Windows WebView2 does not provide Widevine DRM. Services that require Widevine (including some Netflix, Prime Video, and Disney+ playback) may refuse protected playback inside this app. WebView2 can load the sites, retain cookies, and play content supported by its available media technologies.

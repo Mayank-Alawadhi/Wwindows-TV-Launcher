@@ -4,6 +4,7 @@
   { "name": "Prime Video", "url": "https://www.primevideo.com", "icon": "icons/prime-video.svg" },
   { "name": "Disney+ Hotstar", "url": "https://www.hotstar.com", "icon": "icons/hotstar.svg" },
   { "name": "Hulu", "url": "https://www.hulu.com", "icon": "icons/hulu.svg" },
+  { "name": "Plex", "url": "https://app.plex.tv", "icon": "icons/plex.svg" },
   { "name": "Custom One", "url": "https://example.com", "icon": "icons/custom-one.svg" },
   { "name": "Custom Two", "url": "https://example.org", "icon": "icons/custom-two.svg" }
 ]

@@ -3,17 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#08090d" />
+    <meta name="theme-color" content="#090b12" />
     <title>Windows TV Launcher</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <main id="home" aria-label="Streaming services">
-      <div class="topline"><span class="eyebrow">YOUR SCREEN</span><span id="clock"></span></div>
-      <section id="tiles" class="tiles" aria-label="Services"></section>
-      <footer><span>← ↑ ↓ → &nbsp; MOVE</span><span>ENTER &nbsp; OPEN</span><span>BACKSPACE &nbsp; HOME</span></footer>
+    <main id="home">
+      <header class="header"><div><p class="eyebrow">WINDOWS TV LAUNCHER</p><h1>Good evening</h1></div><time id="clock"></time></header>
+      <section class="shelf-wrap" aria-label="Most used sites"><div class="section-title"><h2>Most used</h2><span>YOUR FAVORITES</span></div><div id="hero" class="shelf"></div></section>
+      <section class="all-wrap"><div class="section-title"><h2>All sites</h2><span>PRESS S FOR SETTINGS</span></div><div id="all-sites" class="all-grid"></div></section>
+      <footer><span>← ↑ ↓ → &nbsp; MOVE</span><span>ENTER &nbsp; OPEN</span><span>ESC / BACKSPACE &nbsp; BACK</span><span>S &nbsp; SETTINGS</span><span>Q &nbsp; REMOTE</span></footer>
     </main>
-    <div id="hint" class="hint" aria-live="polite">BACKSPACE &nbsp; HOME</div>
+    <section id="settings" class="overlay" hidden aria-label="Settings">
+      <div class="settings-panel"><header class="settings-header"><div><p class="eyebrow">PERSONALIZE YOUR LAUNCHER</p><h1>Settings</h1></div><button id="close-settings" class="quiet">Done <kbd>Esc</kbd></button></header>
+        <div class="settings-scroll"><section class="site-management"><div class="section-title"><h2>Your websites</h2><button id="add-site" class="primary">＋ Add website</button></div><div id="site-list"></div></section>
+          <section class="preferences"><h2>Preferences</h2><label>Hero row<select id="hero-mode"><option value="most-used">Sort by most used</option><option value="pinned-only">Pinned sites only</option></select></label><label>Remote server port<input id="remote-port" type="number" min="1024" max="65535" value="47831"></label><label class="check"><input id="fullscreen-setting" type="checkbox"> Start in fullscreen</label><button id="reset-stats" class="quiet">Reset usage statistics</button><button id="show-remote" class="quiet">Show remote QR code</button></section>
+        </div>
+      </div>
+    </section>
+    <dialog id="editor"><form id="site-form" method="dialog"><header><div><p class="eyebrow">SITE DETAILS</p><h2 id="form-title">Add website</h2></div><button type="button" class="quiet" id="cancel-editor">Close</button></header><div class="editor-body"><div class="editor-fields"><label>Name<input id="site-name" required maxlength="48" placeholder="Streaming service"></label><label>Website URL<input id="site-url" required type="url" placeholder="https://example.com"></label><label>Logo image <input id="site-logo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"></label><label>Tile background<input id="site-background" type="color" value="#ffffff"></label><div class="drop-zone" id="drop-zone">Choose a logo or drop PNG, JPG, SVG, or WebP here</div></div><div class="preview-wrap"><span>LIVE PREVIEW</span><button class="tile preview" type="button"><img id="preview-logo" alt=""></button><strong id="preview-name">Website name</strong></div></div><p id="form-error" role="alert"></p><footer><button type="button" class="quiet" id="cancel-editor-2">Cancel</button><button type="submit" class="primary">Save website</button></footer></form></dialog>
+    <dialog id="remote-dialog"><form method="dialog"><header><div><p class="eyebrow">PHONE REMOTE</p><h2>Connect on your network</h2></div><button class="quiet">Close</button></header><p id="remote-message">Remote control uses your local network.</p><div id="remote-qr" class="qr-box"></div><p class="remote-address" id="remote-address"></p></form></dialog>
+    <div id="toast" role="status"></div>
     <script type="module" src="/main.js"></script>
   </body>
 </html>
