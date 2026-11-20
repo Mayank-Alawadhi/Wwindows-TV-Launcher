@@ -1,4 +1,6 @@
 .header{align-items:flex-start}
+.phone-status{margin-left:auto;margin-right:18px;padding:10px 15px;border-radius:99px;border:1px solid #ffffff22;background:#ffffff0b;color:#aeb1c2;font-size:13px;align-self:flex-start}
+.phone-status.connected{color:#b8ffd2;border-color:#74e2a055;background:#33b97719}
 #home>.header{height:auto;min-height:clamp(115px,13vh,164px);flex:0 0 auto}
 .welcome{display:flex;flex-direction:column;gap:5px}
 .header .hero-clock{font-size:clamp(58px,7vw,132px);font-weight:600;line-height:.94;letter-spacing:-.065em;color:#fff;padding:0}
@@ -19,3 +21,4 @@
 #power-dialog form>footer button,#restart-confirm-dialog form>footer button{min-height:48px;min-width:150px}
 @keyframes record-key{from{box-shadow:0 0 0 0 rgba(185,175,255,.15)}to{box-shadow:0 0 0 5px rgba(185,175,255,.34)}}
 @media(max-width:850px){.shortcut-list{grid-template-columns:1fr}.header .hero-clock{font-size:clamp(48px,8vw,82px)}.power-button{width:50px;height:50px}}
+#remote-code{font-size:1.5em;letter-spacing:.18em;color:#c5b8ff}

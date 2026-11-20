@@ -7,7 +7,7 @@ const { invoke } = window.__TAURI__.core;
 const defaultShortcuts = { up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight',select:'Enter',home:'Escape',fullscreen:'F11',settings:'S',remote:'Q',power:'P' };
 const shortcutNames = { up:'Move up',down:'Move down',left:'Move left',right:'Move right',select:'Select / open',home:'Home / back',fullscreen:'Toggle fullscreen',settings:'Open settings',remote:'Open phone remote',power:'Power menu' };
 let sites = [];
-let settings = { heroMode: 'most-used', remotePort: 47831, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false, shortcuts:{...defaultShortcuts} };
+let settings = { heroMode: 'most-used', remotePort: 8080, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false, shortcuts:{...defaultShortcuts} };
 let focusId = '';
 let editingIndex = -1;
 let cursorTimer;
@@ -183,7 +183,7 @@ function normalizeUrl(value) { let url=value.trim();if(!/^https?:\/\//i.test(url
 async function showRemote() {
   $('#remote-message').textContent='Scan the QR code with a phone on the same Wi-Fi network.';
   $('#remote-address').textContent='Starting local remote…';$('#remote-qr').replaceChildren();$('#remote-dialog').showModal();
-  try { const info=await invoke('get_remote_info',{port:settings.remotePort});$('#remote-qr').innerHTML=info.qrSvg;$('#remote-address').textContent=info.url; }
+  try { const info=await invoke('get_remote_info',{port:settings.remotePort});$('#remote-qr').innerHTML=info.qrSvg;$('#remote-address').textContent=info.url.replace(`?t=${new URL(info.url).searchParams.get('t')}`, '');$('#remote-code').textContent=info.pairingCode;$('#remote-message').textContent=`Scan to pair automatically, or open ${new URL(info.url).host} and enter the code. Server port ${info.port}.`;if(settings.remotePort!==info.port){settings.remotePort=info.port;$('#remote-port').value=info.port;save();} }
   catch(error){$('#remote-address').textContent=String(error);}
 }
 function showPowerDialog() { $('#power-dialog').showModal();setTimeout(()=>$('#exit-app').focus(),10); }
@@ -200,7 +200,7 @@ function acceptShortcut(event) {
   if(conflict){toast(`${key} is already assigned to ${shortcutNames[conflict[0]]}.`);return true;}
   const action=recordingShortcut;settings.shortcuts[action]=key;recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();document.querySelector(`[data-shortcut="${action}"]`)?.focus();return true;
 }
-function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||47831));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;save();if(oldPort!==settings.remotePort)invoke('configure_remote',{port:settings.remotePort}).catch(toast);render();if(!settingsView.hidden)$('#hero-mode').focus(); }
+async function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||8080));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;await save();if(oldPort!==settings.remotePort){try{settings.remotePort=await invoke('configure_remote',{port:settings.remotePort});$('#remote-port').value=settings.remotePort;await save();}catch(error){toast(String(error));}}render();if(!settingsView.hidden)$('#hero-mode').focus(); }
 
 document.addEventListener('keydown',(event)=>{
   if(acceptShortcut(event))return;
@@ -227,6 +227,7 @@ document.addEventListener('keydown',(event)=>{
 
 $('#power-button').addEventListener('focus',()=>{document.querySelectorAll('.tile.selected').forEach((tile)=>tile.classList.remove('selected'));focusId='power';});
 $('#close-settings').addEventListener('click',closeSettings);$('#add-site').addEventListener('click',()=>editSite());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor-2').addEventListener('click',()=>$('#editor').close());$('#show-remote').addEventListener('click',showRemote);$('#power-button').addEventListener('click',showPowerDialog);
+$('#forget-phones').addEventListener('click',async()=>{try{await invoke('forget_paired_phones');toast('All paired phones forgotten. Scan again to reconnect.');}catch(error){toast(String(error));}});
 $('#reset-shortcuts').addEventListener('click',()=>{settings.shortcuts={...defaultShortcuts};recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();toast('Default shortcuts restored');});
 $('#exit-app').addEventListener('click',()=>invoke('exit_launcher'));
 $('#restart-pc').addEventListener('click',()=>{$('#power-dialog').close();$('#restart-confirm-dialog').showModal();setTimeout(()=>$('#confirm-restart').focus(),10);});
@@ -244,6 +245,8 @@ $('#site-form').addEventListener('submit',async(e)=>{e.preventDefault();try{cons
 function resetCursor(){document.body.classList.remove('cursor-hidden');clearTimeout(cursorTimer);cursorTimer=setTimeout(()=>document.body.classList.add('cursor-hidden'),2500);}document.addEventListener('mousemove',resetCursor);resetCursor();
 clockTick();setInterval(clockTick,30000);
 invoke('load_launcher_data').then(data=>{sites=(data.sites||[]).map((s,i)=>({...s,id:s.id||`site-${i}`}));settings={...settings,...data.settings,shortcuts:{...defaultShortcuts,...data.settings?.shortcuts}};refreshShortcutHints();render();startBoot();}).catch(err=>{toast(`Could not load launcher data: ${err}`);console.error(err);refreshShortcutHints();startBoot();});
+
+window.__TAURI__?.event?.listen('remote-status',event=>{const count=Number(event.payload)||0;$('#phone-status').textContent=count?`Phone${count===1?'':'s'} connected · ${count}`:'Phone not connected';$('#phone-status').classList.toggle('connected',count>0);});
 
 // In site pages, the document-start hook intercepts Backspace before the site's handlers.
 if(location.hostname!=='tauri.localhost'&&location.protocol!=='tauri:'){document.body.style.display='none';}

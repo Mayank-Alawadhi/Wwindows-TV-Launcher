@@ -28,7 +28,16 @@ For a downloadable Windows x64 installer, see [GitHub Releases](https://github.c
 
 ## Sites, logos, and settings
 
-The home screen includes a Most used shelf, a six-column All sites grid, and keyboard navigation. Press **S** or choose **Settings** to add and edit sites, upload logos, pin sites, reorder them, or reset usage counts. The **Q** key shows the phone remote QR code; the phone and PC must be on the same local network. The remote server port can be changed in Settings. Use **F11** to toggle fullscreen.
+The home screen includes a Most used shelf, a six-column All sites grid, and keyboard navigation. Press **S** or choose **Settings** to add and edit sites, upload logos, pin sites, reorder them, or reset usage counts. Use **F11** to toggle fullscreen.
+
+## Phone remote
+
+1. Start the launcher and press **Q**, or open Settings and choose **Connect your phone**.
+2. Connect the phone and PC to the same non-guest Wi-Fi network. Scan the QR code to pair, or type the displayed address into the phone browser and enter the six-digit code. The pairing code expires after ten minutes.
+3. If Windows Firewall asks, allow Windows TV Launcher on **Private networks**. If the page does not load, check that both devices use the same Wi-Fi and turn off router client isolation or guest-network isolation.
+4. The mobile page offers Keypad, Touchpad and Keyboard tabs. Add it to the phone home screen from the browser menu for shortcut access. No internet connection is used by the remote page itself.
+
+The local HTTP and WebSocket server listens on port **8080** by default. Change **Remote server port** in Settings to choose another port; if the requested port is busy, the launcher uses the next available port and displays the actual address in the connect dialog. Keep the firewall rule limited to Private networks.
 
 Settings also lets you remap the launcher keys for directional movement, select, home/back, fullscreen, settings, remote, and the power menu. The power menu can close the launcher or restart Windows; restarting requires a second confirmation. The home screen shows the current time above a smaller time-of-day greeting.
 
