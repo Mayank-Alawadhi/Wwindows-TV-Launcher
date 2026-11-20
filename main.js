@@ -2,17 +2,61 @@ const heroRoot = document.querySelector('#hero');
 const allRoot = document.querySelector('#all-sites');
 const settingsView = document.querySelector('#settings');
 const clock = document.querySelector('#clock');
+const bootScreen = document.querySelector('#boot-screen');
 const { invoke } = window.__TAURI__.core;
 let sites = [];
-let settings = { heroMode: 'most-used', remotePort: 47831, startFullscreen: true };
+let settings = { heroMode: 'most-used', remotePort: 47831, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false };
 let focusId = '';
 let editingIndex = -1;
 let cursorTimer;
+let bootState = 'loading';
+let bootSkipRequested = false;
+let bootRevealTimer;
+let bootFinishTimer;
 const tileById = new Map();
 const colorCache = new Map();
 const $ = (selector) => document.querySelector(selector);
 
 function clockTick() { clock.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', hour: 'numeric', minute: '2-digit' }).format(new Date()); }
+function revealHome() {
+  document.body.classList.add('home-visible', 'tiles-arriving');
+  bootScreen.classList.add('leaving');
+  setTimeout(() => document.body.classList.remove('tiles-arriving'), settings.shortBootAnimation ? 550 : 850);
+}
+function finishBoot(skip = false) {
+  if (bootState !== 'running') return;
+  bootState = 'finished'; clearTimeout(bootRevealTimer); clearTimeout(bootFinishTimer);
+  if (skip) revealHome();
+  bootScreen.remove();
+}
+function startBoot() {
+  const shortcut = new URLSearchParams(location.search).get('shortcut');
+  const cameFromSite = new URLSearchParams(location.search).has('from');
+  if (!settings.showBootAnimation || cameFromSite || shortcut || bootSkipRequested) {
+    bootState = 'finished'; bootScreen.remove(); document.body.classList.add('home-visible');
+    if (shortcut === 's') openSettings(); else if (shortcut === 'q') showRemote();
+    return;
+  }
+  bootState = 'running';
+  const duration = settings.shortBootAnimation ? 1500 : 3500;
+  bootScreen.classList.add('playing');
+  if (settings.shortBootAnimation) bootScreen.classList.add('short');
+  if (settings.bootSound) {
+    fetch('/assets/boot-sound.mp3', { method: 'HEAD' }).then((response) => {
+      if (response.ok && bootState === 'running') { const audio = new Audio('/assets/boot-sound.mp3'); audio.volume = 0.45; return audio.play(); }
+    }).catch(() => {});
+  }
+  bootRevealTimer = setTimeout(revealHome, duration - (settings.shortBootAnimation ? 300 : 700));
+  bootFinishTimer = setTimeout(() => finishBoot(), duration);
+}
+function skipBoot(event) {
+  if (bootState !== 'running' && bootState !== 'loading') return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (bootState === 'loading') { bootSkipRequested = true; return; }
+  finishBoot(true);
+}
+document.addEventListener('keydown', skipBoot, true);
+bootScreen.addEventListener('click', skipBoot, true);
 function save() { return invoke('save_launcher_data', { data: { sites, settings } }).catch((e) => toast(String(e))); }
 function toast(message) { const el = $('#toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2800); }
 function siteLogo(site) { return site.logo || `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(site.url)}&sz=128`; }
@@ -49,7 +93,7 @@ function render() {
     const id = `hero:${site.id || i}`; const wrap = document.createElement('div'); wrap.className = 'tile-wrap';
     wrap.append(makeTile(site, id, 'hero-tile')); const label = document.createElement('span'); label.className='tile-label'; label.textContent=site.name; wrap.append(label); return wrap;
   }));
-  const all = sites.map((site, i) => {const wrap=document.createElement('div');wrap.className='tile-wrap';wrap.append(makeTile(site,`site:${site.id || i}`));const label=document.createElement('span');label.className='tile-label';label.textContent=site.name;wrap.append(label);return wrap;});
+  const all = sites.map((site, i) => {const wrap=document.createElement('div');wrap.className='tile-wrap';wrap.style.animationDelay=`${Math.min(.65,Math.floor(i/6)*.12+.1)}s`;wrap.append(makeTile(site,`site:${site.id || i}`));const label=document.createElement('span');label.className='tile-label';label.textContent=site.name;wrap.append(label);return wrap;});
   const gear = { name: 'Settings', url: '', background: '#272a37', logo: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><text x="60" y="88" text-anchor="middle" font-size="78">⚙</text></svg>') };
   const gearWrap=document.createElement('div');gearWrap.className='tile-wrap';gearWrap.append(makeTile(gear,'settings'));const gearLabel=document.createElement('span');gearLabel.className='tile-label';gearLabel.textContent='Settings';gearWrap.append(gearLabel);all.push(gearWrap);
   allRoot.replaceChildren(...all); tileById.clear();
@@ -76,6 +120,7 @@ function openSettings() { settingsView.hidden=false; populateSettings(); setTime
 function closeSettings() { settingsView.hidden=true; tileById.get('settings')?.focus() || tileById.get(focusId)?.focus(); }
 function populateSettings() {
   $('#hero-mode').value=settings.heroMode; $('#remote-port').value=settings.remotePort; $('#fullscreen-setting').checked=!!settings.startFullscreen;
+  $('#boot-animation-setting').checked=!!settings.showBootAnimation; $('#short-boot-setting').checked=!!settings.shortBootAnimation; $('#boot-sound-setting').checked=!!settings.bootSound;
   const root=$('#site-list'); root.replaceChildren(...sites.map((site,index)=>{
     const row=document.createElement('article'); row.className='site-row'; const img=document.createElement('img');img.src=siteLogo(site);img.alt='';
     const info=document.createElement('div');info.className='site-info';const name=document.createElement('strong');name.textContent=site.name;const url=document.createElement('span');url.textContent=site.url;info.append(name,url);
@@ -103,7 +148,7 @@ async function showRemote() {
   try { const info=await invoke('get_remote_info',{port:settings.remotePort});$('#remote-qr').innerHTML=info.qrSvg;$('#remote-address').textContent=info.url; }
   catch(error){$('#remote-address').textContent=String(error);}
 }
-function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||47831));settings.startFullscreen=$('#fullscreen-setting').checked;save();if(oldPort!==settings.remotePort)invoke('configure_remote',{port:settings.remotePort}).catch(toast);render();if(!settingsView.hidden)$('#hero-mode').focus(); }
+function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||47831));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;save();if(oldPort!==settings.remotePort)invoke('configure_remote',{port:settings.remotePort}).catch(toast);render();if(!settingsView.hidden)$('#hero-mode').focus(); }
 
 document.addEventListener('keydown',(event)=>{
   const editorOpen=$('#editor').open, remoteOpen=$('#remote-dialog').open;
@@ -123,6 +168,7 @@ document.addEventListener('keydown',(event)=>{
 
 $('#close-settings').addEventListener('click',closeSettings);$('#add-site').addEventListener('click',()=>editSite());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor-2').addEventListener('click',()=>$('#editor').close());$('#show-remote').addEventListener('click',showRemote);
 $('#hero-mode').addEventListener('change',updateSettingInputs);$('#remote-port').addEventListener('change',updateSettingInputs);$('#fullscreen-setting').addEventListener('change',updateSettingInputs);
+$('#boot-animation-setting').addEventListener('change',updateSettingInputs);$('#short-boot-setting').addEventListener('change',updateSettingInputs);$('#boot-sound-setting').addEventListener('change',updateSettingInputs);
 $('#reset-stats').addEventListener('click',()=>{for(const site of sites){site.launchCount=0;site.lastOpened=null;}save();render();populateSettings();toast('Usage statistics reset');});
 $('#site-name').addEventListener('input',()=>$('#preview-name').textContent=$('#site-name').value||'Website name');$('#site-background').addEventListener('input',(e)=>$('.preview').style.setProperty('--tile-bg',e.target.value));$('#site-logo').addEventListener('change',e=>readLogo(e.target.files[0]).catch(err=>$('#form-error').textContent=err.message));
 $('#drop-zone').addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('dragging');});$('#drop-zone').addEventListener('dragleave',e=>e.currentTarget.classList.remove('dragging'));$('#drop-zone').addEventListener('drop',e=>{e.preventDefault();e.currentTarget.classList.remove('dragging');readLogo(e.dataTransfer.files[0]).catch(err=>$('#form-error').textContent=err.message);});
@@ -133,7 +179,7 @@ $('#site-form').addEventListener('submit',async(e)=>{e.preventDefault();try{cons
 
 function resetCursor(){document.body.classList.remove('cursor-hidden');clearTimeout(cursorTimer);cursorTimer=setTimeout(()=>document.body.classList.add('cursor-hidden'),2500);}document.addEventListener('mousemove',resetCursor);resetCursor();
 clockTick();setInterval(clockTick,30000);
-invoke('load_launcher_data').then(data=>{sites=(data.sites||[]).map((s,i)=>({...s,id:s.id||`site-${i}`}));settings={...settings,...data.settings};render();const shortcut=new URLSearchParams(location.search).get('shortcut');if(shortcut==='s')openSettings();else if(shortcut==='q')showRemote();}).catch(err=>{toast(`Could not load launcher data: ${err}`);console.error(err);});
+invoke('load_launcher_data').then(data=>{sites=(data.sites||[]).map((s,i)=>({...s,id:s.id||`site-${i}`}));settings={...settings,...data.settings};render();startBoot();}).catch(err=>{toast(`Could not load launcher data: ${err}`);console.error(err);startBoot();});
 
 // In site pages, the document-start hook intercepts Backspace before the site's handlers.
 if(location.hostname!=='tauri.localhost'&&location.protocol!=='tauri:'){document.body.style.display='none';}

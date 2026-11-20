@@ -32,6 +32,10 @@ The home screen includes a Most used shelf, a six-column All sites grid, and key
 
 On first run, default sites and icons are copied from the bundled `sites.json` and `icons` folder. At runtime, the persistent configuration and uploaded logos are stored in `%LOCALAPPDATA%\app.windowstv.launcher\` (`sites.json` and `logos`). Settings changes are saved there and survive app updates and reinstalls. You can edit that user-data `sites.json` manually while the app is closed. The bundled root `sites.json` is the template for new profiles. Single-instance behavior is enabled.
 
+## Startup screen
+
+The launch animation uses the bundled `assets/boot-logo.png`; it does not fetch the logo at runtime. The Settings screen can disable the animation or use its 1.5 second version. An optional sound is off by default; to enable it, add `assets/boot-sound.mp3` before building. The Windows `.ico` installer icon is generated from the same logo mark and includes a 256×256 image.
+
 ## DRM note
 
 Windows WebView2 does not provide Widevine DRM. Services that require Widevine (including some Netflix, Prime Video, and Disney+ playback) may refuse protected playback inside this app. WebView2 can load the sites, retain cookies, and play content supported by its available media technologies.

@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
+    <div id="boot-screen" class="boot-screen" aria-label="Starting Windows TV Launcher">
+      <div class="boot-halo" aria-hidden="true"></div>
+      <div class="boot-art"><img id="boot-logo" src="/assets/boot-logo.png" alt="Windows TV OS" fetchpriority="high" /></div>
+    </div>
     <main id="home">
       <header class="header"><div><p class="eyebrow">WINDOWS TV LAUNCHER</p><h1>Good evening</h1></div><time id="clock"></time></header>
       <section class="shelf-wrap" aria-label="Most used sites"><div class="section-title"><h2>Most used</h2><span>YOUR FAVORITES</span></div><div id="hero" class="shelf"></div></section>
@@ -17,7 +21,7 @@
     <section id="settings" class="overlay" hidden aria-label="Settings">
       <div class="settings-panel"><header class="settings-header"><div><p class="eyebrow">PERSONALIZE YOUR LAUNCHER</p><h1>Settings</h1></div><button id="close-settings" class="quiet">Done <kbd>Esc</kbd></button></header>
         <div class="settings-scroll"><section class="site-management"><div class="section-title"><h2>Your websites</h2><button id="add-site" class="primary">＋ Add website</button></div><div id="site-list"></div></section>
-          <section class="preferences"><h2>Preferences</h2><label>Hero row<select id="hero-mode"><option value="most-used">Sort by most used</option><option value="pinned-only">Pinned sites only</option></select></label><label>Remote server port<input id="remote-port" type="number" min="1024" max="65535" value="47831"></label><label class="check"><input id="fullscreen-setting" type="checkbox"> Start in fullscreen</label><button id="reset-stats" class="quiet">Reset usage statistics</button><button id="show-remote" class="quiet">Show remote QR code</button></section>
+          <section class="preferences"><h2>Preferences</h2><label>Hero row<select id="hero-mode"><option value="most-used">Sort by most used</option><option value="pinned-only">Pinned sites only</option></select></label><label>Remote server port<input id="remote-port" type="number" min="1024" max="65535" value="47831"></label><label class="check"><input id="fullscreen-setting" type="checkbox"> Start in fullscreen</label><label class="check"><input id="boot-animation-setting" type="checkbox"> Show boot animation</label><label class="check"><input id="short-boot-setting" type="checkbox"> Short version (1.5s)</label><label class="check"><input id="boot-sound-setting" type="checkbox"> Boot sound (assets/boot-sound.mp3)</label><button id="reset-stats" class="quiet">Reset usage statistics</button><button id="show-remote" class="quiet">Show remote QR code</button></section>
         </div>
       </div>
     </section>

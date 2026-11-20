@@ -30,9 +30,17 @@ struct Site {
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Settings { hero_mode: String, remote_port: u16, start_fullscreen: bool }
+#[serde(default)]
+struct Settings {
+    hero_mode: String,
+    remote_port: u16,
+    start_fullscreen: bool,
+    show_boot_animation: bool,
+    short_boot_animation: bool,
+    boot_sound: bool,
+}
 impl Default for Settings {
-    fn default() -> Self { Self { hero_mode: "most-used".into(), remote_port: 47831, start_fullscreen: true } }
+    fn default() -> Self { Self { hero_mode: "most-used".into(), remote_port: 47831, start_fullscreen: true, show_boot_animation: true, short_boot_animation: false, boot_sound: false } }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -169,10 +177,12 @@ const INPUT_SCRIPT: &str = r#"
   const resetCursor = () => { document.documentElement.style.cursor='default'; clearTimeout(cursorTimer); cursorTimer=setTimeout(()=>document.documentElement.style.cursor='none',2500); };
   window.addEventListener('mousemove',resetCursor,true); resetCursor();
   const typing = el => !!el && (el.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(el.tagName) || !!el.closest?.('[contenteditable="true"]'));
+  const isLauncher = () => location.protocol === 'tauri:' || ['tauri.localhost','127.0.0.1','localhost'].includes(location.hostname);
   window.addEventListener('keydown',e=>{
+    if(e.key==='F11' && document.getElementById('boot-screen')) return;
     if(e.key==='F11'){e.preventDefault();e.stopImmediatePropagation();const w=window.__TAURI__?.window?.getCurrentWindow?.();if(w)w.isFullscreen().then(v=>w.setFullscreen(!v));return;}
-    if(!typing(e.target) && ((e.key==='Backspace') || e.key==='Escape' || (e.altKey&&e.key==='ArrowLeft'))){e.preventDefault();e.stopImmediatePropagation();location.href='http://tauri.localhost/index.html';}
-    if(!typing(e.target) && (e.key==='s'||e.key==='S'||e.key==='q'||e.key==='Q') && location.hostname!=='tauri.localhost'){e.preventDefault();e.stopImmediatePropagation();location.href='http://tauri.localhost/index.html?shortcut='+e.key.toLowerCase();}
+    if(!isLauncher() && !typing(e.target) && ((e.key==='Backspace') || e.key==='Escape' || (e.altKey&&e.key==='ArrowLeft'))){e.preventDefault();e.stopImmediatePropagation();location.href='http://tauri.localhost/index.html?from=site';}
+    if(!isLauncher() && !typing(e.target) && (e.key==='s'||e.key==='S'||e.key==='q'||e.key==='Q')){e.preventDefault();e.stopImmediatePropagation();location.href='http://tauri.localhost/index.html?from=site&shortcut='+e.key.toLowerCase();}
   },true);
   setInterval(()=>{const invoke=window.__TAURI__?.core?.invoke;if(invoke)invoke('poll_remote_commands').then(keys=>keys.forEach(key=>document.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true})))).catch(()=>{});},250);
 })();
@@ -188,7 +198,7 @@ pub fn run() {
             if let Some(data)=data.as_ref() { let _=start_remote(app.handle().clone(),data.settings.remote_port); }
             let app_handle=app.handle().clone(); let fullscreen=data.map(|d|d.settings.start_fullscreen).unwrap_or(true);
             let window=WebviewWindowBuilder::new(app,"main",WebviewUrl::App("index.html".into()))
-                .title("Windows TV Launcher").fullscreen(fullscreen).decorations(false).initialization_script(INPUT_SCRIPT)
+                .title("Windows TV Launcher").fullscreen(fullscreen).decorations(false).background_color(tauri::window::Color(0,0,0,255)).initialization_script(INPUT_SCRIPT)
                 .on_new_window(move |url,_| { let label=format!("auth-popup-{}",POPUP_ID.fetch_add(1,Ordering::Relaxed));
                     match WebviewWindowBuilder::new(&app_handle,label,WebviewUrl::External(url)).title("Sign in").inner_size(900.0,700.0).build(){Ok(window)=>tauri::webview::NewWindowResponse::Create{window},Err(_)=>tauri::webview::NewWindowResponse::Deny} })
                 .build()?; let _=window.set_focus(); Ok(())

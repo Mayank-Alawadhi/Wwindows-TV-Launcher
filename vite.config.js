@@ -16,6 +16,7 @@ export default defineConfig({
       const out = resolve('dist');
       cpSync(resolve('sites.json'), resolve(out, 'sites.json'));
       cpSync(resolve('icons'), resolve(out, 'icons'), { recursive: true });
+      cpSync(resolve('assets'), resolve(out, 'assets'), { recursive: true });
     }
   }]
 });
