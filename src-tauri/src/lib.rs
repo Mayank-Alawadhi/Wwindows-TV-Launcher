@@ -184,7 +184,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![load_launcher_data, save_launcher_data, save_logo, configure_remote, get_remote_info, poll_remote_commands])
         .setup(|app| {
             app.manage(RemoteControl::default());
-            let data=load_launcher_data(app.handle()).ok();
+            let data=load_launcher_data(app.handle().clone()).ok();
             if let Some(data)=data.as_ref() { let _=start_remote(app.handle().clone(),data.settings.remote_port); }
             let app_handle=app.handle().clone(); let fullscreen=data.map(|d|d.settings.start_fullscreen).unwrap_or(true);
             let window=WebviewWindowBuilder::new(app,"main",WebviewUrl::App("index.html".into()))
