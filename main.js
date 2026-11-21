@@ -7,7 +7,7 @@ const { invoke } = window.__TAURI__.core;
 const defaultShortcuts = { up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight',select:'Enter',home:'Escape',fullscreen:'F11',settings:'S',remote:'Q',power:'P' };
 const shortcutNames = { up:'Move up',down:'Move down',left:'Move left',right:'Move right',select:'Select / open',home:'Home / back',fullscreen:'Toggle fullscreen',settings:'Open settings',remote:'Open phone remote',power:'Power menu' };
 let sites = [];
-let settings = { heroMode: 'most-used', remotePort: 8080, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false, shortcuts:{...defaultShortcuts} };
+let settings = { heroMode: 'most-used', remotePort: 8080, startFullscreen: true, showBootAnimation: true, shortBootAnimation: false, bootSound: false, launchOnStartup:false, shortcuts:{...defaultShortcuts} };
 let focusId = '';
 let editingIndex = -1;
 let cursorTimer;
@@ -53,14 +53,16 @@ function finishBoot(skip = false) {
 }
 function startBoot() {
   const shortcut = new URLSearchParams(location.search).get('shortcut');
+  const toolbarAction = new URLSearchParams(location.search).get('toolbar');
   const cameFromSite = new URLSearchParams(location.search).has('from');
   if (!settings.showBootAnimation || cameFromSite || shortcut || bootSkipRequested) {
     bootState = 'finished'; bootScreen.remove(); document.body.classList.add('home-visible');
-    if (shortcut === 's'||shortcut==='settings') openSettings(); else if (shortcut === 'q'||shortcut==='remote') showRemote(); else if(shortcut==='power')showPowerDialog();
+    if(toolbarAction==='close')invoke('close_site_popups').catch(()=>{});
+    if (shortcut === 's'||shortcut==='settings') openSettings(); else if (shortcut === 'q'||shortcut==='remote') showRemote(); else if(shortcut==='power')showPowerDialog();else if(shortcut==='fullscreen')toggleFullscreen();
     return;
   }
   bootState = 'running';
-  const duration = settings.shortBootAnimation ? 1500 : 8000;
+  const duration = settings.shortBootAnimation ? 1500 : 4500;
   bootScreen.classList.add('playing');
   if (settings.shortBootAnimation) bootScreen.classList.add('short');
   if (settings.bootSound) {
@@ -68,7 +70,7 @@ function startBoot() {
       if (response.ok && bootState === 'running') { const audio = new Audio('/assets/boot-sound.mp3'); audio.volume = 0.45; return audio.play(); }
     }).catch(() => {});
   }
-  bootRevealTimer = setTimeout(revealHome, duration - (settings.shortBootAnimation ? 300 : 700));
+  bootRevealTimer = setTimeout(revealHome, duration - 350);
   bootFinishTimer = setTimeout(() => finishBoot(), duration);
 }
 function skipBoot(event) {
@@ -120,7 +122,7 @@ function render() {
   const gearWrap=document.createElement('div');gearWrap.className='tile-wrap';gearWrap.append(makeTile(gear,'settings'));const gearLabel=document.createElement('span');gearLabel.className='tile-label';gearLabel.textContent='Settings';gearWrap.append(gearLabel);all.push(gearWrap);
   allRoot.replaceChildren(...all); tileById.clear();
   [...heroRoot.querySelectorAll('.tile'), ...allRoot.querySelectorAll('.tile')].forEach((node) => tileById.set(node.dataset.id,node));
-  const target = focusId==='power'?$('#power-button'):(tileById.get(focusId) || tileById.values().next().value); focusId = target?.dataset.id || (target?.id==='power-button'?'power':''); if(target?.classList.contains('tile'))target.classList.add('selected'); target?.focus({ preventScroll: true }); focusedColor();
+  const target = focusId==='power'?$('#power-button'):focusId==='settings-header'?$('#header-settings'):(tileById.get(focusId) || tileById.values().next().value); focusId = target?.dataset.id || (target?.id==='power-button'?'power':''); if(target?.classList.contains('tile'))target.classList.add('selected'); target?.focus({ preventScroll: true }); focusedColor();
 }
 function launch(site) {
   if (!site) return;
@@ -128,8 +130,8 @@ function launch(site) {
   location.href = site.url;
 }
 function moveFocus(key) {
-  const buttons = [...document.querySelectorAll('#hero .tile,#all-sites .tile'),$('#power-button')];
-  const current = focusId==='power'?$('#power-button'):tileById.get(focusId); if (!buttons.length) return;
+  const buttons = [...document.querySelectorAll('#hero .tile,#all-sites .tile'),$('#header-settings'),$('#power-button')];
+  const current = focusId==='power'?$('#power-button'):focusId==='settings-header'?$('#header-settings'):tileById.get(focusId); if (!buttons.length) return;
   if (!current || !buttons.includes(current)) { buttons[0].focus(); return; }
   const dir = ({ ArrowLeft:[-1,0], ArrowRight:[1,0], ArrowUp:[0,-1], ArrowDown:[0,1] })[key];
   const r = current.getBoundingClientRect(); const cx=r.left+r.width/2, cy=r.top+r.height/2;
@@ -157,7 +159,7 @@ function moveSettingsFocus(action) {
 }
 function populateSettings() {
   $('#hero-mode').value=settings.heroMode; $('#remote-port').value=settings.remotePort; $('#fullscreen-setting').checked=!!settings.startFullscreen;
-  $('#boot-animation-setting').checked=!!settings.showBootAnimation; $('#short-boot-setting').checked=!!settings.shortBootAnimation; $('#boot-sound-setting').checked=!!settings.bootSound;
+  $('#boot-animation-setting').checked=!!settings.showBootAnimation; $('#short-boot-setting').checked=!!settings.shortBootAnimation; $('#boot-sound-setting').checked=!!settings.bootSound;$('#startup-setting').checked=!!settings.launchOnStartup;
   const root=$('#site-list'); root.replaceChildren(...sites.map((site,index)=>{
     const row=document.createElement('article'); row.className='site-row'; const img=document.createElement('img');img.src=siteLogo(site);img.alt='';
     const info=document.createElement('div');info.className='site-info';const name=document.createElement('strong');name.textContent=site.name;const url=document.createElement('span');url.textContent=site.url;info.append(name,url);
@@ -188,7 +190,7 @@ async function showRemote() {
 }
 function showPowerDialog() { $('#power-dialog').showModal();setTimeout(()=>$('#exit-app').focus(),10); }
 async function toggleFullscreen() {
-  try { const appWindow=window.__TAURI__.window.getCurrentWindow();await appWindow.setFullscreen(!(await appWindow.isFullscreen())); }
+  try { const appWindow=window.__TAURI__.window.getCurrentWindow();await invoke('set_launcher_fullscreen',{fullscreen:!(await appWindow.isFullscreen())}); }
   catch(error) { toast(`Could not toggle fullscreen: ${error}`); }
 }
 function acceptShortcut(event) {
@@ -200,7 +202,7 @@ function acceptShortcut(event) {
   if(conflict){toast(`${key} is already assigned to ${shortcutNames[conflict[0]]}.`);return true;}
   const action=recordingShortcut;settings.shortcuts[action]=key;recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();document.querySelector(`[data-shortcut="${action}"]`)?.focus();return true;
 }
-async function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||8080));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;await save();if(oldPort!==settings.remotePort){try{settings.remotePort=await invoke('configure_remote',{port:settings.remotePort});$('#remote-port').value=settings.remotePort;await save();}catch(error){toast(String(error));}}render();if(!settingsView.hidden)$('#hero-mode').focus(); }
+async function updateSettingInputs() { const oldPort=settings.remotePort;settings.heroMode=$('#hero-mode').value;settings.remotePort=Math.max(1024,Math.min(65535,Number($('#remote-port').value)||8080));settings.startFullscreen=$('#fullscreen-setting').checked;settings.showBootAnimation=$('#boot-animation-setting').checked;settings.shortBootAnimation=$('#short-boot-setting').checked;settings.bootSound=$('#boot-sound-setting').checked;settings.launchOnStartup=$('#startup-setting').checked;await save();if(oldPort!==settings.remotePort){try{settings.remotePort=await invoke('configure_remote',{port:settings.remotePort});$('#remote-port').value=settings.remotePort;await save();}catch(error){toast(String(error));}}render();if(!settingsView.hidden)$('#hero-mode').focus(); }
 
 document.addEventListener('keydown',(event)=>{
   if(acceptShortcut(event))return;
@@ -215,7 +217,7 @@ document.addEventListener('keydown',(event)=>{
   if(action==='select'){
     event.preventDefault();
     if(!settingsView.hidden){const active=document.activeElement;if(active?.matches('button,select,input[type=checkbox]'))active.click();return;}
-    if(focusId==='settings')openSettings();else{const id=focusId.split(':')[1];const index=Number(id);launch(sites.find((site,i)=>String(site.id||i)===id)||sites[index]);}return;
+    if(focusId==='settings'||focusId==='settings-header')openSettings();else if(focusId==='power')showPowerDialog();else{const id=focusId.split(':')[1];const index=Number(id);launch(sites.find((site,i)=>String(site.id||i)===id)||sites[index]);}return;
   }
   event.preventDefault();
   if(action==='home'){if(!settingsView.hidden)closeSettings();return;}
@@ -226,6 +228,7 @@ document.addEventListener('keydown',(event)=>{
 });
 
 $('#power-button').addEventListener('focus',()=>{document.querySelectorAll('.tile.selected').forEach((tile)=>tile.classList.remove('selected'));focusId='power';});
+$('#header-settings').addEventListener('focus',()=>{document.querySelectorAll('.tile.selected').forEach((tile)=>tile.classList.remove('selected'));focusId='settings-header';});$('#header-settings').addEventListener('click',openSettings);
 $('#close-settings').addEventListener('click',closeSettings);$('#add-site').addEventListener('click',()=>editSite());$('#cancel-editor').addEventListener('click',()=>$('#editor').close());$('#cancel-editor-2').addEventListener('click',()=>$('#editor').close());$('#show-remote').addEventListener('click',showRemote);$('#power-button').addEventListener('click',showPowerDialog);
 $('#forget-phones').addEventListener('click',async()=>{try{await invoke('forget_paired_phones');toast('All paired phones forgotten. Scan again to reconnect.');}catch(error){toast(String(error));}});
 $('#reset-shortcuts').addEventListener('click',()=>{settings.shortcuts={...defaultShortcuts};recordingShortcut=null;save();renderShortcutSettings();refreshShortcutHints();toast('Default shortcuts restored');});
@@ -234,6 +237,7 @@ $('#restart-pc').addEventListener('click',()=>{$('#power-dialog').close();$('#re
 $('#confirm-restart').addEventListener('click',async()=>{try{await invoke('restart_windows');$('#restart-confirm-dialog').close();}catch(error){$('#restart-confirm-dialog').close();toast(`Could not restart Windows: ${error}`);}});
 $('#hero-mode').addEventListener('change',updateSettingInputs);$('#remote-port').addEventListener('change',updateSettingInputs);$('#fullscreen-setting').addEventListener('change',updateSettingInputs);
 $('#boot-animation-setting').addEventListener('change',updateSettingInputs);$('#short-boot-setting').addEventListener('change',updateSettingInputs);$('#boot-sound-setting').addEventListener('change',updateSettingInputs);
+$('#startup-setting').addEventListener('change',updateSettingInputs);
 $('#reset-stats').addEventListener('click',()=>{for(const site of sites){site.launchCount=0;site.lastOpened=null;}save();render();populateSettings();toast('Usage statistics reset');});
 $('#site-name').addEventListener('input',()=>$('#preview-name').textContent=$('#site-name').value||'Website name');$('#site-background').addEventListener('input',(e)=>$('.preview').style.setProperty('--tile-bg',e.target.value));$('#site-logo').addEventListener('change',e=>readLogo(e.target.files[0]).catch(err=>$('#form-error').textContent=err.message));
 $('#drop-zone').addEventListener('dragover',e=>{e.preventDefault();e.currentTarget.classList.add('dragging');});$('#drop-zone').addEventListener('dragleave',e=>e.currentTarget.classList.remove('dragging'));$('#drop-zone').addEventListener('drop',e=>{e.preventDefault();e.currentTarget.classList.remove('dragging');readLogo(e.dataTransfer.files[0]).catch(err=>$('#form-error').textContent=err.message);});
